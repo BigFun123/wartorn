@@ -12,6 +12,7 @@ class GameObject {
     _hasCollision = false;
     _loaded = false;
     _isNPC = false;
+    _fileContents = null;
 
     constructor(go) {
         this._go = go;
@@ -103,6 +104,51 @@ class GameObject {
 
     dispose() {
         Bus.send(EVT_REMOVESHADOW, this._mesh);
+    }
+
+    playFullAnim(name, speed, doneCallback) {
+        this._fileContents?.loadedAnimationGroups?.forEach((anim) => {
+            if (anim.name.toLowerCase() === name.toLowerCase()) {                
+                anim.loopAnimation = false;
+                const startFrame = speed == -1 ? anim.to : anim.from;                
+                anim.goToFrame(startFrame);
+                anim.weight = 1;
+                anim.speedRatio = speed;
+                anim.play(false);                
+                anim.onAnimationEndObservable.addOnce(() => {
+                    doneCallback && doneCallback(anim);
+                });
+            }
+        });
+    }
+
+    getCockpitCam() {
+        //return the mesh named "CameraTarget"
+        const mesh = this._fileContents.loadedMeshes.find((mesh) => {
+            return mesh.name === "CockpitCam";
+        });
+        return mesh || this._mesh;
+    }
+
+    getCameraTarget(){
+        const mesh = this._fileContents.loadedMeshes.find((mesh) => {
+            return mesh.name === "CameraTarget";
+        });
+        return mesh || this._mesh;
+    }
+
+    // hide all meshes except the cockpit
+    showCockpit(show) {
+        this._fileContents.loadedMeshes.forEach((mesh) => {
+            if (show) {
+                mesh.isVisible = mesh.name === "Cockpit"     ||
+                mesh?.parent?.name === "Cockpit"     ||
+                mesh?.parent?.parent?.name === "Cockpit"    
+            } else {
+                mesh.isVisible = mesh.name !== "Cockpit";
+            }
+            mesh.name === "Collision" && (mesh.isVisible = false);
+        });
     }
 
 }

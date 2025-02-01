@@ -1,11 +1,10 @@
 import { FreeCamera, HemisphericLight, MeshBuilder, PhysicsAggregate, PhysicsShapeType, Vector3 } from '@babylonjs/core';
 import { Inspector } from '@babylonjs/inspector';
 import { log, error } from './debug/Log.js';
-import State from './State.js';
 import CRender from './Render.js';
 import CPhysics from './Physics.js';
 import { gplayer, gscene } from './Global.js';
-import { Bus, EVT_KEYDOWN, EVT_KEYUP, EVT_PAUSE, EVT_RESET, EVT_RESUME, EVT_SETSTATE } from './Bus.js';
+import { Bus, EVT_KEYDOWN, EVT_KEYUP, EVT_LOADMISSION, EVT_MISSIONLOADED, EVT_PAUSE, EVT_RESET, EVT_RESUME, EVT_SELECTMISSION, EVT_SETSTATE } from './Bus.js';
 import assetMan from './AssetMan.js';
 import SkyBox from './SkyBox.js';
 import { setupFollowCamera, setupFreeCamera } from './CameraMan.js';
@@ -19,6 +18,10 @@ import Debug from './ui/Debug.js';
 import CAudioMan from './CAudioMan.js';
 import { initProgress } from './ui/Progress.js';
 import stateInstance from './State.js';
+import MissionSelector from './ui/MissionSelector.js';
+import { CPerformance } from './ui/CPerformance.js';
+import VehicleSelector from './ui/VehicleSelector.js';
+import LoadingScreen from './ui/LoadingScreen.js';
 
 /**
  * All components have the same lifecycle
@@ -36,8 +39,9 @@ class Game {
     _status = null;
     _cursor = null;
     _bulletman = null;
+    _missionSelector = null;
 
-    _setuptasks = ["setupsky"];
+    _setuptasks = ["setupsky", "setupperf"];
     _counter = 0;
 
     constructor() {
@@ -47,12 +51,13 @@ class Game {
             return;
         }
 
-
-        this.setup();
         this._engine = gscene.getEngine();
+        this._engine.loadingScreen = new LoadingScreen(gscene);
         new CGUI(this._engine);
         this._status = new CraftStatus();
         this._debug = new Debug();
+        this.setup();
+
         initProgress();
         this._ready = true;
         this._bulletman = new CBulletManager();
@@ -97,49 +102,37 @@ class Game {
         Bus.subscribe(EVT_RESET, () => {
             this.reset();
         });
+
+        Bus.subscribe(EVT_LOADMISSION, async (mission) => {
+
+        });
+
+        Bus.subscribe(EVT_MISSIONLOADED, async (mission) => {
+            this._cursor.setup();
+            setupFollowCamera();
+        });
     }
 
     async setup() {
 
-        this._physics = new CPhysics();
-        await this._physics.setup();
+        this._physics = new CPhysics();        
         this._render = new CRender();
         this._assets = new assetMan(gscene);
         this._cursor = new CCursor();
 
         this._input = new Input();
-        this._input.setup();
+        
         this._audio = new CAudioMan();
-
-
-
-
-
-
-        // let temp = MeshBuilder.CreateBox("box", { size: 0.1 }, gscene);
-        // temp.position.x = 2.5;
-        // temp.position.y = 0.5;
-
-
-        // temp = MeshBuilder.CreateBox("box", { size: 0.1 }, gscene);
-        // temp.position.x = 0;
-        // temp.position.y = 2.5;
-
-
-        // temp = MeshBuilder.CreateBox("box", { size: 0.1 }, gscene);
-        // temp.position.x = 0;
-        // temp.position.y = 0;
-        // temp.position.z = 2.5;
-
-        await missionControl.setupMission();
-        this._cursor.setup();
-
-        setupFollowCamera();
-
+        this._missionSelector = new MissionSelector();        
+        this._vehicleSelector = new VehicleSelector();
+        
+        setupFreeCamera()
+        this._input.setup();
+        await this._physics.setup();
+        this._missionSelector.setup();
+        this._vehicleSelector.setup();
+        stateInstance.setup();
         this.pause(false);
-
-
-        //this._skybox = new SkyBox();
     }
 
     lazysetup() {
@@ -150,6 +143,9 @@ class Game {
         const task = this._setuptasks.shift();
         if (task === "setupsky") {
             this._skybox = new SkyBox();
+        }
+        if (task === "setupperf") {
+            new CPerformance(gscene);
         }
     }
 
@@ -164,7 +160,7 @@ class Game {
     }
 
     pulse(delta) {
-        if (State.paused || !gscene || !this._ready) {
+        if (stateInstance.paused || !gscene || !this._ready) {
             return;
         }
 
@@ -189,7 +185,7 @@ class Game {
     }
 
     pause(b) {
-        State.paused = b;
+        stateInstance.paused = b;
         if (b) {
             this._engine.stopRenderLoop();
         } else {

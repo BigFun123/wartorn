@@ -7,13 +7,27 @@ export const EVT_PAUSE = "pause";
 export const EVT_RESUME = "resume";
 export const EVT_SETPLAYER = "setplayer";
 export const EVT_SHOWPOS = "showpos";
-export const EVT_LOADMISSION = "loadmission";
 export const EVT_SETSTATE = "setstate";
 export const EVT_PROGRESS = "progress";  // {text: "Loading", progress: 0-100}
 
 export const EVT_PLAYERCREATED = "playercreated";
 export const EVT_WORLDLOADED = "worldloaded";
 export const EVT_PLAYERUPDATE = "playerupdate";
+
+export const EVT_SELECTMISSION = "selectmission";
+export const EVT_MISSIONSELECTED = "selectedmission";
+export const EVT_LOADMISSION = "loadmission";
+export const EVT_MISSIONLOADED = "missionloaded";
+
+export const EVT_SELECTVEHICLE = "selectvehicle";
+export const EVT_VEHICLESELECTED = "selectedvehicle";
+export const EVT_LOADVEHICLE = "loadvehicle";
+export const EVT_VEHICLELOADED = "vehicleloaded";
+
+export const EVT_SELECTNEXTTARGET = "selectnexttarget";
+export const EVT_SELECTPREVTARGET = "selectprevtarget";
+
+
 export const EVT_SETVOLUME = "setvolume";
 export const EVT_FOG = "fog";
 export const EVT_CAMERA = "camera";
@@ -33,6 +47,7 @@ export const EVT_REMOVESHADOW = "removeshadow";
 export const EVT_KEYUP = "keyup";
 export const EVT_KEYDOWN = "keydown";
 export const EVT_CURSOR3D  = "cursor3d";
+export const EVT_MOUSEUP = "mouseup";
 
 export class Bus {
     static subscribers = {};

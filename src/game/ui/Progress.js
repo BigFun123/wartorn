@@ -18,7 +18,7 @@ function initProgress() {
     gameUI.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
     gameUI.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
     CGUI.adt.addControl(gameUI);
-    gameUI.isVisible = true;
+    gameUI.isVisible = false;
     
     
     const gameText = new TextBlock("statuslabel");

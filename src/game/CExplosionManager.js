@@ -16,7 +16,7 @@ export class CExplosionManager {
     createExplosions() {
         for (let i = 0; i < 3; i++) {
             const explosion = (new Sprite("explosion", this.spriteManager));
-            explosion.size =3;
+            explosion.size = 4;
             explosion.isVisible = false;
             this.explosions.push(explosion);
         }

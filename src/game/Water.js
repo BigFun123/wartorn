@@ -10,6 +10,7 @@ class Water extends GameObject {
         this._mesh = MeshBuilder.CreateGround("ground", { width: this._go.scale[0], height: this._go.scale[2] }, gscene);
         // add texture
         this._mesh.position = new Vector3(this._go.position[0], this._go.position[1], this._go.position[2]);
+        this._mesh.visibility = 0.5;
         const groundMaterial = new StandardMaterial("ground", gscene);
         groundMaterial.diffuseTexture = new Texture("assets/textures/water.png", gscene);
         // tile 10 times

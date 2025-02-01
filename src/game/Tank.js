@@ -35,9 +35,11 @@ class Tank extends IVehicle {
         const oldmesh = this._mesh;
 
         const task = AssetMan.getInstance()._assetman.addMeshTask(this._go.name, "", "assets/", this._go.file);
-        task.onSuccess = (task) => {
-            this.afterLoadedTasks(task.loadedMeshes);
-            task.loadedMeshes.forEach((mesh) => {
+        task.onSuccess = (loadedFile) => {
+            this._fileContents = loadedFile;
+            this.afterLoadedTasks(loadedFile.loadedMeshes);
+            loadedFile.loadedMeshes.forEach((mesh) => {
+                
                 if (mesh.name === "Turret") {
                     this._turret = mesh;
                 }
@@ -47,10 +49,10 @@ class Tank extends IVehicle {
 
                 if (mesh.name === "Collision") {
                     this._mesh = mesh;
-                    this._mesh.scaling = new Vector3(0.1, 0.1, 0.1);
+                    this._mesh.scaling = new Vector3(0.2, 0.2, 0.2);
                     mesh.isVisible = false;
-                    this._mesh.position = new Vector3(this._go.position[0], this._go.position[1], this._go.position[2]);
-                    mesh.aggregate = new PhysicsAggregate(mesh, PhysicsShapeType.MESH, { mass: 1, restitution: 0.4, friction: 0.9, linearDamping: 1, staticFriction: 0.1 }, this.scene);
+                    this._mesh.position = new Vector3(-this._go.position[0], this._go.position[1], this._go.position[2]);
+                    mesh.aggregate = new PhysicsAggregate(mesh, PhysicsShapeType.MESH, { mass: this._go.mass || 0.5, restitution: 0.4, friction: 0.9, linearDamping: 1, staticFriction: 0.1 }, this.scene);
                     mesh.aggregate.body.disablePreStep = false;
                     mesh.aggregate.body.setLinearDamping(1);
                     //mesh.aggregate.transformNode.setAbsolutePosution(new Vector3(this._go.position[0], this._go.position[1], this._go.position[2]));
@@ -108,7 +110,7 @@ class Tank extends IVehicle {
         this._yaw += yaw * this._yawrate * delta;
         this._throttle = throttle + pitch;
 
-        if (mouseTarget.hit) {
+        if (mouseTarget?.hit) {
             this.pointTurretAtTarget(mouseTarget.pickedPoint, delta);
         }
 

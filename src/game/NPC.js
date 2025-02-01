@@ -8,10 +8,10 @@ class NPC {
     _counter = 0;
     _counterSense = 100;
     _counterMax = 200;
-    name;
-    health;
-    damage;
-    armor;
+    name = "NPC";
+    health = 100;
+    damage = 0;
+    armor = 0;
     awarenessObjecs = [];
 
 
@@ -66,6 +66,10 @@ class NPC {
             this._counter = 0;
             this.doAttack();
         }
+    }
+
+    getMesh() {
+        return this._controller._mesh;
     }
 }
 

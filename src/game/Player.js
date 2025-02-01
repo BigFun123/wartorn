@@ -1,7 +1,7 @@
 import { Vector3 } from "@babylonjs/core";
 import { setPlayer } from "./Global";
 import CInput from "./Input";
-import { Bus, EVT_CURSOR3D, EVT_PLAYERCREATED, EVT_PLAYERUPDATE } from "./Bus";
+import { Bus, EVT_CURSOR3D, EVT_KEYUP, EVT_PLAYERCREATED, EVT_PLAYERUPDATE, EVT_SELECTNEXTTARGET, EVT_SELECTPREVTARGET } from "./Bus";
 
 class Player {
     pitch = 0;
@@ -19,7 +19,8 @@ class Player {
 
     _craft = null;
     _status = "0";
-    _mouseTarget = {pickedPoint: new Vector3(0,0,0)};
+    _mouseTarget = null;
+    _target = null;
     _inputInstance = null;
 
 
@@ -34,6 +35,18 @@ class Player {
 
         Bus.subscribe(EVT_CURSOR3D, (hit) => {
             this._mouseTarget = hit;
+        });
+
+        Bus.subscribe(EVT_KEYUP, (e) => {
+            if (e.code === "KeyG") {
+                this._craft.doGear();
+            }
+            if (e.code === "BracketRight") {
+                Bus.send(EVT_SELECTNEXTTARGET, {});
+            }
+            if (e.code === "BracketLeft") {
+                Bus.send(EVT_SELECTPREVTARGET, {});
+            }
         });
     }
 
@@ -73,18 +86,18 @@ class Player {
         this.pitch = Math.min(1, Math.max(-1, this.pitch));
 
         if (this._inputInstance.isKeyDown("a")) {
-            this.roll = -1;
+            this.roll -= 1 * delta;
         } else if (this._inputInstance.isKeyDown("d")) {
-            this.roll = 1;
+            this.roll += 1 * delta;
         } else {
             this.roll = zeroth.y;
         }
 
         // yaw is qe
         if (this._inputInstance.isKeyDown("q")) {
-            this.yaw = 1;
+            this.yaw += 1  * delta;
         } else if (this._inputInstance.isKeyDown("e")) {
-            this.yaw = -1;
+            this.yaw -= 1  * delta;
         } else {
             this.yaw = zeroth.z;
         }
@@ -99,15 +112,16 @@ class Player {
             //this._craft._throttle = 0;
         }
 
-        this.fire1 = this._inputInstance.isKeyDown("Control") ? 1 : 0;
+        this.gear = this._inputInstance.isKeyDown("g") ? 1 : 0;
 
+        this.fire1 = this._inputInstance.isKeyDown("Control") ? 1 : 0;
         
         //this.fire1 = this._inputInstance.mouse.left ? 1 : this.fire1;
-        this.fire2 = this._inputInstance.mouse.right ? 1 : 0;
+        this.fire2 = this._inputInstance.isKeyDown(" ") ? 1 : 0;
         this.fire3 = this._inputInstance.mouse.middle ? 1 : 0;
 
         this.throttle = Math.min(this._craft._maxThrottle, Math.max(this._craft._minThrottle, this.throttle));
-        this._craft.setInputs(delta, this.pitch, this.roll, this.yaw, this.throttle, this._mouseTarget, this.fire1, this.fire2, this.fire3);
+        this._craft.setInputs(delta, this.pitch, this.roll, this.yaw, this.throttle, this._mouseTarget, this.fire1, this.fire2, this.fire3, this.gear);
     }
 
     pulse(delta) {
@@ -115,8 +129,12 @@ class Player {
         const cptf = this._craft._canPitch.toFixed(2);
         const cps = cptf  < 0.5 ? `[${cptf}]!` : `${cptf}`;
 
-        this._status = `${this.ignition}\n${this._craft._throttle.toFixed(2)}\n${this._craft._speed.toFixed(2)}\n${this.altitude.toFixed(2)}\n${this.heading.toFixed(2)}\n${cps}\n${this._craft._pitch.toFixed(2)}\n${this._craft._roll.toFixed(2)}`;
+        this._status = `${this.ignition}\n${this._craft._throttle.toFixed(2)}\n${(this._craft._speed*100).toFixed(2)}\n${this.altitude.toFixed(2)}\n${this.heading.toFixed(2)}\n${cps}\n${this._craft._pitch.toFixed(2)}\n${this._craft._roll.toFixed(2)}\n100\n${this._craft._gear ? 1 : 0}\n${this._craft._flaps ? 1 : 0}\n:AMM\nMIS:\n`;
         //console.log(this._status);
+    }
+
+    selectNextTarget(target) {
+        this._target = target.getMesh();
     }
 }
 

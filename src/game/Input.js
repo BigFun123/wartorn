@@ -1,5 +1,5 @@
 import { PointerEventTypes } from "@babylonjs/core";
-import { Bus, EVT_KEYDOWN, EVT_KEYUP } from "./Bus";
+import { Bus, EVT_KEYDOWN, EVT_KEYUP, EVT_MOUSEUP } from "./Bus";
 import { gscene } from "./Global";
 
 class Input {
@@ -84,6 +84,7 @@ class Input {
                 else if (pointerInfo.event.button === 2) {
                     this.mouse.right = false;
                 }
+                Bus.send(EVT_MOUSEUP, this.mouse);
             }
         });
     }

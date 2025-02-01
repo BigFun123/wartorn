@@ -1,5 +1,5 @@
 import { AssetsManager } from "@babylonjs/core";
-import { Bus, EVT_PLAYERCREATED, EVT_PLAYERUPDATE, EVT_PROGRESS, EVT_WORLDLOADED } from "./Bus";
+import { Bus, EVT_MISSIONLOADED, EVT_PLAYERCREATED, EVT_PROGRESS, EVT_WORLDLOADED } from "./Bus";
 
 class AssetMan {
     _assetman = null;
@@ -17,8 +17,10 @@ class AssetMan {
             Bus.send(EVT_PROGRESS, { text: "Loading", progress: 100 - (remainingCount / totalCount) * 100 });
         };
         this._assetman.onFinish = (tasks) => {
-            Bus.send(EVT_PLAYERCREATED, {});
+            //Bus.send(EVT_PLAYERCREATED, {});
             Bus.send(EVT_WORLDLOADED, {});
+            Bus.send(EVT_MISSIONLOADED, {});
+            
         };
     }
 

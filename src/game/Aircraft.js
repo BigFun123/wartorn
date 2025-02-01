@@ -2,9 +2,10 @@ import { PhysicsAggregate, PhysicsBody, PhysicsShapeType, Quaternion, SceneLoade
 import GameObject from "./GameObject";
 import AssetMan from "./AssetMan";
 import { gscene } from "./Global";
-import { Bus, EVT_ADDSHADOW, EVT_DEBUG } from "./Bus";
+import { Bus, EVT_ADDSHADOW, EVT_DEBUG, EVT_DEBUGLINE, EVT_PLAY3DAUDIO } from "./Bus";
 import CControlSurfaces from "./CControlSurfaces";
 import IVehicle from "./IVehicle";
+import CBulletManager from "./BulletMan";
 
 class Aircraft extends IVehicle {
 
@@ -16,15 +17,20 @@ class Aircraft extends IVehicle {
     _rollrate = 2;
     _yaw = 0;
     _yawrate = 0.5;
+    _gear = 1;
     _playercontrolled = false;
     _canPitch = 0;
     _controlSurfaces = null;
+    _hasFired = false;
+    _hasFired2 = false;
+    _hasGeared = false;
 
     setup() {
         const oldmesh = this._mesh;
 
         const task = AssetMan.getInstance()._assetman.addMeshTask(this._go.name, "", "assets/", this._go.file);
         task.onSuccess = (task) => {
+            this._fileContents = task;
             this.afterLoadedTasks(task.loadedMeshes);
             this._controlSurfaces = new CControlSurfaces(gscene);
             this._controlSurfaces.setup(task.loadedMeshes);
@@ -32,9 +38,10 @@ class Aircraft extends IVehicle {
                 if (mesh.name === "Collision") {
                     this._mesh = mesh;
                     this._mesh.scaling = new Vector3(0.1, 0.1, 0.1);
-                    mesh.isVisible = false;
-                    this._mesh.position = new Vector3(this._go.position[0], this._go.position[1], this._go.position[2]);
-                    mesh.aggregate = new PhysicsAggregate(mesh, PhysicsShapeType.MESH, { mass: 0.5, restitution: 0.4, friction: 0.701, linearDamping: 0.15 }, this.scene);
+                    //mesh.isVisible = false;
+                    mesh.layerMask = 0x01000000;
+                    this._mesh.position = new Vector3(-this._go.position[0], this._go.position[1], this._go.position[2]);
+                    mesh.aggregate = new PhysicsAggregate(mesh, PhysicsShapeType.MESH, { mass: 0.5, restitution: 0.4, friction: 0.701, linearDamping: 0.25 }, this.scene);
                     mesh.aggregate.body.disablePreStep = false;
                     mesh.aggregate.body.setLinearDamping(0.15);
                     mesh.aggregate.body.setGravityFactor(0.05);
@@ -49,7 +56,7 @@ class Aircraft extends IVehicle {
 
                 }
             });
-            
+
             //this._mesh = task.loadedMeshes[0];
 
             if (oldmesh !== undefined) {
@@ -64,35 +71,84 @@ class Aircraft extends IVehicle {
         task.onError = function (task) {
             console.error("Error loading aircraft", task);
         };
-        
+
     }
 
     pulse() {
         // calculate speed
-        super.pulse();        
+        super.pulse();
         this._canPitch = Math.min(1, this._speed / 8);
         this._canRoll = Math.min(1, this._speed / 8);
         let forwardness = Math.abs(Vector3.Dot(this._mesh.forward, this._velocity.normalize()));
-        Bus.send(EVT_DEBUG, "forwardness: " + forwardness);
+        //Bus.send(EVT_DEBUG, "forwardness: " + forwardness);
 
         if (this._aggregate !== undefined) {
             this._aggregate.body.applyForce(this._mesh.forward.scale(-this._throttle * this._power), this._mesh.getAbsolutePosition().add(this._mesh.forward.scale(-2)));
             this._aggregate.body.applyForce(this._mesh.up.scale(0.014 * forwardness * this._speed), this._mesh.getAbsolutePosition());
             //this._aggregate.body.applyForce(this._mesh.up.scale(this._pitch * 10), this._mesh.getAbsolutePosition());
             this._aggregate.body.setAngularVelocity(this._mesh.right.scale(this._pitch * 2 * this._canPitch)
-            .add(this._mesh.up.scale(-this._yaw * this._yawrate))
-            .add(this._mesh.forward.scale(this._roll * this._rollrate * this._canRoll)));
+                .add(this._mesh.up.scale(-this._yaw * this._yawrate))
+                .add(this._mesh.forward.scale(this._roll * this._rollrate * this._canRoll)));
 
         }
 
         this._controlSurfaces.setControlSurfaces(-this._yaw, -this._pitch, -this._roll);
     }
 
-    setInputs(delta, pitch, roll, yaw, throttle) {
+    setInputs(delta, pitch, roll, yaw, throttle, target, fire1, fire2, fire3, gear) {
         this._pitch = pitch;
         this._roll = roll;
         this._yaw = yaw;
         this._throttle = throttle;
+        this._mesh && target && target.pickedPoint && Bus.send(EVT_DEBUGLINE, { from: this._mesh.getAbsolutePosition(), to: target?.pickedPoint });
+
+        if (fire1) {
+            if (!this._hasFired) {
+                this.fire();
+            }
+        } else {
+            this._hasFired = false;
+        }
+
+        if (fire2) {
+            if (!this._hasFired2) {
+                this.fireRocket();
+            }
+        } else {
+            this._hasFired2 = false;
+        }
+    }
+
+    showGear(b) {
+        this._mesh.getChildMeshes().forEach((mesh) => {
+            if (mesh.name === "m29a-landingOn") {
+                mesh.isVisible = b;
+            }
+        });
+    }
+
+    doGear(b) {
+        this.showGear(true);
+        this._gear = !this._gear;
+        this.playFullAnim("landinggear", this._gear ? -1 : 1, (anim) => {
+            this.showGear(this._gear);
+        });
+
+    }
+
+    fireRocket() {
+        this._hasFired2 = true;
+        Bus.send(EVT_PLAY3DAUDIO, { name: "a_tank_firing.mp3", mesh: this._mesh, volume: 0.70 });
+        CBulletManager.fireRocket(this._mesh, this._velocity);
+    }
+
+    fire() {
+        // if (!this._hasFired) {
+        this._hasFired = true;
+        Bus.send(EVT_PLAY3DAUDIO, { name: "a_tank_firing.mp3", mesh: this._mesh, volume: 0.70 });
+        CBulletManager.fireBullet(this._mesh);
+        //}
+        //   this._hasFired = false;
     }
 }
 
