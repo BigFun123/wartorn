@@ -1,5 +1,5 @@
 import { Color3, GlowLayer, HemisphericLight, Scene, ShadowGenerator, SpotLight, Vector3 } from "@babylonjs/core";
-import { gplayer, gscene, gshadowgen, setShadowGen } from "./Global";
+import { gplayer, gscene, gshadowgen, PrimaryLayer, setShadowGen } from "./Global";
 import { Bus, EVT_ADDSHADOW, EVT_REMOVESHADOW } from "./Bus";
 
 class CRender {
@@ -33,6 +33,7 @@ class CRender {
         light.shadowMaxZ = 50;
         light.darkness = 0.1;
         this.light = light;
+        light.includeOnlyWithLayerMask = PrimaryLayer;
 
 
         gscene.onBeforeRenderObservable.add(() => {
@@ -45,6 +46,9 @@ class CRender {
         let sg = this.shadowGenerator;
         this.shadowGenerator.usePoissonSampling = true;
         this.shadowGenerator.useExponentialShadowMap = false;
+        // limit shadows to layermask = 0x01000000;
+        this.shadowGenerator.layerMask = 0x01000000;
+
         /* sg.bias = 0.002;
          sg.normalBias = 0.2;
          sg.nearPlane = 0.1;

@@ -1,6 +1,10 @@
 export const EVT_DEBUG = "debug";
 export const EVT_DEBUGVEC = "debugvec";
 export const EVT_DEBUGLINE = "debuglin";
+export const EVT_DEBUG_NEXTTARGET = "debugnexttarget";
+export const EVT_DEBUG_PREVTARGET = "debugprevtarget";
+
+
 export const EVT_ERROR = "error";
 export const EVT_RESET = "reset";
 export const EVT_PAUSE = "pause";
@@ -21,11 +25,15 @@ export const EVT_MISSIONLOADED = "missionloaded";
 
 export const EVT_SELECTVEHICLE = "selectvehicle";
 export const EVT_VEHICLESELECTED = "selectedvehicle";
+export const EVT_VEHICLEPREPARED = "selectedprepared";
 export const EVT_LOADVEHICLE = "loadvehicle";
 export const EVT_VEHICLELOADED = "vehicleloaded";
 
 export const EVT_SELECTNEXTTARGET = "selectnexttarget";
 export const EVT_SELECTPREVTARGET = "selectprevtarget";
+export const EVT_SETCAMERATARGET = "setcameratarget";
+
+export const EVT_NEXTTARGET_SELECTED = "nexttarget_selected";
 
 
 export const EVT_SETVOLUME = "setvolume";

@@ -1,6 +1,6 @@
 import { MeshBuilder, PhysicsAggregate, PhysicsShapeType, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
 import GameObject from "./GameObject";
-import { gscene } from "./Global";
+import { gscene, PrimaryLayer } from "./Global";
 
 class Water extends GameObject {
 
@@ -11,6 +11,7 @@ class Water extends GameObject {
         // add texture
         this._mesh.position = new Vector3(this._go.position[0], this._go.position[1], this._go.position[2]);
         this._mesh.visibility = 0.5;
+        this._mesh.layerMask = PrimaryLayer;
         const groundMaterial = new StandardMaterial("ground", gscene);
         groundMaterial.diffuseTexture = new Texture("assets/textures/water.png", gscene);
         // tile 10 times

@@ -1,17 +1,21 @@
 import { Color3, Color4, Matrix, Mesh, MeshBuilder, PhysicsAggregate, PhysicsShapeType, SimplificationSettings, SimplificationType, Sprite, SpriteManager, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
-import { gplayer, gscene } from "./Global";
+import { AllLayers, CombinedBitmask, gplayer, gscene, PrimaryLayer, SecondaryLayer } from "./Global";
 import stateInstance from "./State";
+import { Bus, EVT_KEYDOWN } from "./Bus";
+import earcut from 'earcut';
 
 export class CTerrain {
-    tilesize = 500;
-    heightScale = 0.12;
+    tilesize = 1000;
+    heightScale = 0.22;
     heightOffset = 9;
     numTiles = 2;
     tiles = {};
     terrainServer = "http://localhost:3000";
     treemat = null;
     spriteManager = null;
-    debug = true;
+    debug = false;
+    zoom = 14;
+    treeSize = 25;
 
     constructor(gx, gy, numTiles = 3) {
         this.gx = gx;
@@ -22,9 +26,20 @@ export class CTerrain {
             console.warn("TERRAIN DEBUG MODE - NO PHYSICS OR TREES");
         }
 
+        Bus.subscribe(EVT_KEYDOWN, (e) => {
+            // if key == + then increment the layermask for each tile.plane
+            if (e.code === "NumpadAdd") {
+                for (let key in this.tiles) {
+                    this.tiles[key].plane.layerMask += 1;
+                    console.log(this.tiles[key].plane.layerMask);
+                }
+            }
+        });
     }
 
-    setup() {
+    async setup() {
+
+        this.fontData = await (await fetch("./fonts/Roboto_Bold.json")).json(); // load 
 
         this.spriteManager = new SpriteManager("treesManager", this.terrainServer + "/tree1.png", 50000, { width: 600, height: 581, samplingMode: 7, fogEnabled: true }, gscene);
         this.spriteManager.texture.updateSamplingMode(Texture.TRILINEAR_SAMPLINGMODE);
@@ -40,28 +55,34 @@ export class CTerrain {
         // create a 3x3 grid of tiles
         for (let x = 0; x <= this.numTiles; x++) {
             for (let y = 0; y <= this.numTiles; y++) {
-                this.createTile(x + this.gx, y + this.gy, x, y, 14);
+                this.createTile(x + this.gx, y + this.gy);
             }
         }
     }
 
-    createTile(gx, gy, x, y, zoom) {
+    createTile(gx, gy) {
+        const zoom = this.zoom;
+        const x = gx - this.gx;
+        const y = gy - this.gy;
         this.tiles[`${gx}_${gy}`] = { gx, gy, x, y, zoom };
         // create a 255 x 255 plane, with 255 subdivisions
         const plane = MeshBuilder.CreateGround(`${gx}_${gy}`, { width: this.tilesize + .02, height: this.tilesize + .02, subdivisions: 512, updatable: true }, gscene);
-        plane.layerMask = 7;
+        plane.layerMask = AllLayers;
         plane.receiveShadows = true;
         this.tiles[`${gx}_${gy}`].plane = plane;
-        plane.position = new Vector3((x) * this.tilesize, this.heightOffset, (this.numTiles - y) * this.tilesize);
+
+        plane.position = new Vector3((x) * this.tilesize, this.heightOffset, -y * this.tilesize);
         // load a webp image to use as a heighmap
         const rgbmat = new StandardMaterial("mat", gscene);
         const rgbtexture = new Texture(this.terrainServer + `/rgb/${zoom}/${gx}/${gy}.png`, gscene);
         this.tiles[`${gx}_${gy}`].rgb = rgbtexture;
         rgbmat.diffuseTexture = rgbtexture;
         rgbmat.emissiveTexture = rgbtexture;
-        rgbmat.specularColor = new Color3(0.8, 0.8, 0.8);
-        rgbmat.specularPower = 8;
+        rgbmat.specularColor = new Color3(0.5, 0.5, 0.6);
+        rgbmat.specularPower = 4;
         rgbtexture.mode = Texture.LINEAR_LINEAR_MIPLINEAR;
+
+        this.createBigLabel(plane, gx, gy, x, y);
 
         const bumpTexture = new Texture(this.terrainServer + `/PackedDirt_N.jpg`, gscene);
         rgbmat.bumpTexture = bumpTexture;
@@ -129,6 +150,8 @@ export class CTerrain {
 
             // simplify the geometry of plane
             let simplificationSettings = new SimplificationSettings(0.5, 10000, true);
+            this.plantTrees(gx, gy);
+            //this.createPhysics(gx, gy);
 
             // Apply the simplification
             //plane.simplify([simplificationSettings], false, SimplificationType.QUADRATIC, function () {
@@ -136,44 +159,89 @@ export class CTerrain {
 
             //});
 
-            if (!this.debug) {
-                this.createPhysics(gx, gy);
-                this.plantTrees(gx, gy);
-            }
-
         });
     }
 
+    /**
+     * Create a big 3d text label for the plane
+     * @param {*} plane 
+     * @param {*} gx 
+     * @param {*} gy 
+     * @param {*} x 
+     * @param {*} y 
+     */
+    createBigLabel(plane, gx, gy, x, y) {
+        const text = MeshBuilder.CreateText(
+            "myText",
+            "T " + gx + "," + gy + ", " + x + "," + y,
+            this.fontData,
+            {
+                size: 16,
+                resolution: 64,
+                depth: 10,
+            },
+            gscene,
+            earcut
+        );
+        text.position = new Vector3((plane.position.x), 60, plane.position.z);
+        // create a line to the origin of the plane
+        const line = MeshBuilder.CreateLines("line", { points: [text.position, plane.position] }, gscene);
+    }
+
     createPhysics(gx, gy) {
-        this._aggregate = new PhysicsAggregate(this.tiles[`${gx}_${gy}`].plane, PhysicsShapeType.MESH, { mass: 0, restitution: 0.4, friction: 0.1, linearDamping: 0.5 }, gscene);
+        this.tiles[`${gx}_${gy}`].aggregate = new PhysicsAggregate(this.tiles[`${gx}_${gy}`].plane, PhysicsShapeType.MESH, { mass: 0, restitution: 0.4, friction: 1.1, linearDamping: 0.5 }, gscene);
     }
 
 
     pulse(delta) {
-        const pos = gplayer._craft._mesh.aggregate?.transformNode.position;
+        const pos = gplayer._craft.getPosition();
         if (!pos) {
             return;
         }
 
         // calculate which tile the player is over
-        const xx = Math.floor(pos.x / this.tilesize) + 2;
-        const yy = Math.floor(-pos.z / this.tilesize) + 2;
-        gplayer.tileX = this.gx + xx;
-        gplayer.tileY = this.gy + yy;
+        const xx = Math.floor(pos.x / this.tilesize);
+        const yy = Math.floor(-pos.z / this.tilesize);
+        gplayer.tileX = this.gx + xx + 1;
+        gplayer.tileY = this.gy + yy + 1;
         // if the player is over a new tile, create a new tile
+        // if (!this.tiles[`${gplayer.tileX}_${gplayer.tileY}`]) {
+        //     this.createTile(gplayer.tileX, gplayer.tileY, xx, yy, 14);
+        // }
+        const tile = this.tiles[`${gplayer.tileX}_${gplayer.tileY}`];
+        if (!tile.aggregate) {
+            this.createPhysics(gplayer.tileX, gplayer.tileY);
+        }
 
-        if (!this.tiles[`${gplayer.tileX}_${gplayer.tileY}`]) {
-            this.createTile(gplayer.tileX, gplayer.tileY, xx, yy, 14);
-        }
-        if (!this.tiles[`${gplayer.tileX + 1}_${gplayer.tileY}`]) {
-            this.createTile(gplayer.tileX + 1, gplayer.tileY, xx + 1, yy, 14);
-        }
-        if (!this.tiles[`${gplayer.tileX + 1}_${gplayer.tileY + 1}`]) {
-            this.createTile(gplayer.tileX + 1, gplayer.tileY + 1, xx + 1, yy + 1, 14);
-        }
-        if (!this.tiles[`${gplayer.tileX}_${gplayer.tileY + 1}`]) {
-            this.createTile(gplayer.tileX, gplayer.tileY + 1, xx, yy + 1, 14);
-        }
+        // for (let x = -1; x < 2; x++) {
+        //     for (let y = -1; y < 2; y++) {
+        //         if (!this.tiles[`${gplayer.tileX + x}_${gplayer.tileY + y}`]) {
+        //             this.createTile(gplayer.tileX + x, gplayer.tileY + y, xx+x, yy+y, 14);
+        //         }
+        //         if (!this.tiles[`${gplayer.tileX + x}_${gplayer.tileY + y}`]?.aggregate) {
+        //             this.createPhysics(gplayer.tileX + x, gplayer.tileY + y);
+        //             this.plantTrees(gplayer.tileX + x, gplayer.tileY + y);
+        //         }
+        //     }
+        // }
+
+        // if (!this.tiles[`${gplayer.tileX}_${gplayer.tileY}`].aggregate) {
+        //     this.createPhysics(gplayer.tileX, gplayer.tileY);
+        //     this.plantTrees(gplayer.tileX, gplayer.tileY);
+        // }
+
+        // if (!this.tiles[`${gplayer.tileX}_${gplayer.tileY}`]) {
+        //     this.createTile(gplayer.tileX, gplayer.tileY, xx, yy, 14);
+        // }
+        // if (!this.tiles[`${gplayer.tileX + 1}_${gplayer.tileY}`]) {
+        //     this.createTile(gplayer.tileX + 1, gplayer.tileY, xx + 1, yy, 14);
+        // }
+        // if (!this.tiles[`${gplayer.tileX + 1}_${gplayer.tileY + 1}`]) {
+        //     this.createTile(gplayer.tileX + 1, gplayer.tileY + 1, xx + 1, yy + 1, 14);
+        // }
+        // if (!this.tiles[`${gplayer.tileX}_${gplayer.tileY + 1}`]) {
+        //     this.createTile(gplayer.tileX, gplayer.tileY + 1, xx, yy + 1, 14);
+        // }
 
     }
 
@@ -224,9 +292,10 @@ export class CTerrain {
                     const rnd = Math.random() < 0.25;
                     if (g > 200 && r < 100 && b < 100 && rnd) {
                         // plant a tree
-                        let posx = tile.plane.position.x + positions[(((512 - i) * 513 + j) * 3) + 0] + Math.random();
-                        let posy = tile.plane.position.y + positions[(((512 - i) * 513 + j) * 3) + 1] + 2;
-                        let posz = tile.plane.position.z + positions[(((512 - i) * 513 + j) * 3) + 2] + Math.random();
+                        const rnd = Math.random() * this.treeSize + 1.5;
+                        let posx = tile.plane.position.x + positions[(((512 - i) * 513 + j) * 3) + 0] + Math.random() * 5;
+                        let posy = tile.plane.position.y + positions[(((512 - i) * 513 + j) * 3) + 1] + rnd/2;
+                        let posz = tile.plane.position.z + positions[(((512 - i) * 513 + j) * 3) + 2] + Math.random() * 5;
 
                         //var matrix = Matrix.Translation(posx, posy, posz);
                         // scale randomly
@@ -236,7 +305,7 @@ export class CTerrain {
                         const tree = new Sprite("tree", this.spriteManager);
                         tree.color = new Color4(0.65, 0.65, 0.65, 1);
                         tree.position = new Vector3(posx, posy, posz);
-                        tree.size = Math.random() * 3 + 0.5;
+                        tree.size = rnd;
                     }
 
 

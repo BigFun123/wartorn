@@ -1,8 +1,8 @@
 import { Control, Rectangle, TextBlock } from "@babylonjs/gui";
 import CGUI from "./GUI";
-import { gplayer } from "../Global";
+import { gplayer, PrimaryLayer } from "../Global";
 import { Quaternion } from "@babylonjs/core";
-import { Bus, EVT_PLAYERCREATED, EVT_PLAYERUPDATE } from "../Bus";
+import { Bus, EVT_NEXTTARGET_SELECTED, EVT_PLAYERCREATED, EVT_PLAYERUPDATE, EVT_SELECTNEXTTARGET } from "../Bus";
 
 const altimeter = {
     needle1: "ALT.Needle1",
@@ -12,12 +12,17 @@ const altimeter = {
 }
 
 class CraftStatus {
+    _currentTarget = null;
     constructor() {        
         this.setup();
 
         Bus.subscribe(EVT_PLAYERCREATED, () => {
             this.setupAltimeter();
         });
+
+        Bus.subscribe(EVT_NEXTTARGET_SELECTED, (target) => {
+            this._currentTarget.text = target?._go?.name;
+        })
     }
 
     setup() {
@@ -34,7 +39,7 @@ class CraftStatus {
         //00001000 8
         window.gameUI = this.gameUI;
 
-        this.gameUI.layerMask = 0x4;
+        this.gameUI.layerMask = PrimaryLayer;
         this.gameUI.width = "100px";
         this.gameUI.height = "290px";
         this.gameUI.top = "50px";
@@ -68,14 +73,14 @@ class CraftStatus {
         gameText.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 
         let gameText2 = new TextBlock("craftstatus");
-        gameText2.layerMask = 0x0000001;
+        gameText2.layerMask = PrimaryLayer;
         gameText2.text = "0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n0\n0";
         //gameText2.text = "0\n0\n0\n0";
         gameText2.color = "white";
         gameText2.fontSize = 12;
         gameText2.fontFamily = "Arial";
         gameText2.top = "1px";
-        gameText2.left = "-30px";
+        gameText2.left = "-35px";
         gameText2.width = "70px";
         gameText2.height = "320px";
         gameText2.outlineColor = "black";
@@ -86,6 +91,25 @@ class CraftStatus {
         gameText2.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
         gameText2.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         this.statusText = gameText2;
+
+        let currentTarget = new TextBlock("currentTarget");
+        currentTarget.layerMask = PrimaryLayer;
+        currentTarget.text = "Target";
+        currentTarget.color = "white";
+        currentTarget.fontSize = 12;
+        currentTarget.fontFamily = "Arial";
+        currentTarget.top = "1px";
+        currentTarget.left = "5px";
+        currentTarget.width = "100px";
+        currentTarget.height = "320px";
+        currentTarget.outlineColor = "black";
+        currentTarget.outlineWidth = 2;
+        CGUI.adt.addControl(currentTarget);
+        currentTarget.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+        currentTarget.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        currentTarget.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+        currentTarget.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        this._currentTarget = currentTarget;
     }
 
     update() {

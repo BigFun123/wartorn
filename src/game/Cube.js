@@ -1,16 +1,18 @@
-import { MeshBuilder, PhysicsAggregate, PhysicsShapeType, StandardMaterial, Texture } from "@babylonjs/core";
+import { MeshBuilder, PhysicsAggregate, PhysicsShapeType, Quaternion, StandardMaterial, Texture, Vector4 } from "@babylonjs/core";
 import GameObject from "./GameObject";
 import { gscene } from "./Global";
 
-class Ground extends GameObject {
+class Cube extends GameObject {
 
     setup() {
         const oldMesh = this._mesh;
 
-        this._mesh = MeshBuilder.CreateGround("ground", { width: this._go.scale[0], height: this._go.scale[2] }, gscene);
+        this._mesh = MeshBuilder.CreateBox("box", { width: this._go.scale[0], height: this._go.scale[2] }, gscene);
         this._mesh.receiveShadows = true;
+        //this._mesh.rotationQuaternion = Quaternion.FromArray(this._go.rotation);
         this._mesh.position.set(this._go.position[0], this._go.position[1], this._go.position[2]);
-        this._aggregate = new PhysicsAggregate(this._mesh, PhysicsShapeType.BOX, { mass: 0 }, gscene);
+        
+        this._aggregate = new PhysicsAggregate(this._mesh, PhysicsShapeType.BOX, { mass: 0, friction: 1 }, gscene);
 
         const groundMat = new StandardMaterial("groundTexture", gscene);
         groundMat.diffuseTexture = new Texture("assets/textures/dirt.jpg", gscene);
@@ -22,6 +24,8 @@ class Ground extends GameObject {
             oldMesh.dispose();
         }
     }
+
+    reset() {};
 }
 
-export default Ground;
+export default Cube;

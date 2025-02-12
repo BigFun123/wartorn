@@ -36,7 +36,7 @@ function GamePage({ page, setPage }) {
 
   return (
     <div>
-      {console.log(page)}
+      {/* {console.log(page)}
       <button onClick={() => {        
         pauseGame(true);
       }}>Pause</button>
@@ -45,7 +45,7 @@ function GamePage({ page, setPage }) {
       }}>Resume</button>
       <button onClick={() => {        
         resetGame();
-      }}>Reset</button>
+      }}>Reset</button> */}
       {<SceneComponent visible={true} className="canvas" antialias onSceneReady={onSceneReady} id="my-canvas" />}
       {page === "menu" && <MenuComponent />}
     </div >

@@ -1,4 +1,5 @@
 import { AdvancedDynamicTexture, Button, Control, Image, TextBlock } from "@babylonjs/gui";
+import { CanvasHeight, CanvasWidth, PrimaryLayer, SecondaryLayer } from "../Global";
 
 const cornerRadius = 2;
 const DIALOG_BORDER = "gray";
@@ -14,8 +15,9 @@ class CGUI {
     //}
 
     CGUI.adt = this.advancedTexture;
-    this.advancedTexture.idealHeight = 780;
-    this.advancedTexture.idealWidth = 1020;
+    CGUI.adt.layer.layerMask = PrimaryLayer;
+    this.advancedTexture.idealWidth = CanvasWidth;
+    this.advancedTexture.idealHeight = CanvasHeight;
     this.advancedTexture.renderAtIdealSize = true;
     this.advancedTexture.useInvalidateRectOptimization = true;
   }

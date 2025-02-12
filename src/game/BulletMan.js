@@ -115,7 +115,7 @@ export default class CBulletManager {
                 bullet.fusetime -= 1;
                 //bullet.position.addInPlace(bullet.ownerVelocity.scale(0.5));
                 //bullet.aggregate.body.setLinearVelocity();
-                bullet.position.addInPlace(bullet.ownerVelocity.scale(0.25).add(Vector3.Down().scale(.1)));
+                bullet.position.addInPlace(bullet.ownerVelocity.scale(0.25).add(Vector3.Down().scale(.03)));
                 continue;
             }
             bullet.position.addInPlace(bullet.forward.scale(bullet.power));

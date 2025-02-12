@@ -3,7 +3,7 @@ import { Inspector } from '@babylonjs/inspector';
 import { log, error } from './debug/Log.js';
 import CRender from './Render.js';
 import CPhysics from './Physics.js';
-import { gplayer, gscene } from './Global.js';
+import { gplayer, gscene, setInput } from './Global.js';
 import { Bus, EVT_KEYDOWN, EVT_KEYUP, EVT_LOADMISSION, EVT_MISSIONLOADED, EVT_PAUSE, EVT_RESET, EVT_RESUME, EVT_SELECTMISSION, EVT_SETSTATE } from './Bus.js';
 import assetMan from './AssetMan.js';
 import SkyBox from './SkyBox.js';
@@ -121,6 +121,7 @@ class Game {
         this._cursor = new CCursor();
 
         this._input = new Input();
+        setInput(this._input);
         
         this._audio = new CAudioMan();
         this._missionSelector = new MissionSelector();        

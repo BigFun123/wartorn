@@ -42,7 +42,7 @@ const SceneComponent = ({ visible, antialias, engineOptions, adaptToDeviceRatio,
 
   return (
     <div className="canvas">
-      <canvas ref={reactCanvas} {...rest} width={1920} height={1080} />;
+      <canvas ref={reactCanvas} {...rest} width={1920} height={900} />;
     </div>);
 };
 
