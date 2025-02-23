@@ -15,6 +15,7 @@ export const EVT_SETSTATE = "setstate";
 export const EVT_PROGRESS = "progress";  // {text: "Loading", progress: 0-100}
 
 export const EVT_PLAYERCREATED = "playercreated";
+export const EVT_PLAYERLOADED = "playerloaded";
 export const EVT_WORLDLOADED = "worldloaded";
 export const EVT_PLAYERUPDATE = "playerupdate";
 
@@ -56,6 +57,8 @@ export const EVT_KEYUP = "keyup";
 export const EVT_KEYDOWN = "keydown";
 export const EVT_CURSOR3D  = "cursor3d";
 export const EVT_MOUSEUP = "mouseup";
+
+export const EVT_EXPORT = "export";
 
 export class Bus {
     static subscribers = {};

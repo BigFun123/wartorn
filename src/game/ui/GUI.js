@@ -1,4 +1,4 @@
-import { AdvancedDynamicTexture, Button, Control, Image, TextBlock } from "@babylonjs/gui";
+import { AdvancedDynamicTexture, Button, Control, Image, Rectangle, TextBlock } from "@babylonjs/gui";
 import { CanvasHeight, CanvasWidth, PrimaryLayer, SecondaryLayer } from "../Global";
 
 const cornerRadius = 2;
@@ -59,6 +59,43 @@ class CGUI {
 
 
     return button;
+  }
+
+  static createRect(name, width, height, top, left, color, bg, thickness, alpha, isVisible) {
+    let rect = new Rectangle(name);
+    rect.width = width;
+    rect.height = height;
+    rect.top = top;
+    rect.left = left;
+    rect.color = color;
+    rect.thickness = thickness;
+    rect.background = bg;
+    rect.alpha = alpha;
+    rect.isVisible = isVisible;
+    rect.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    rect.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    return rect;
+  }
+
+  static createText(name, text, color, fontSize, fontFamily, top, left, width, height, outlineColor, outlineWidth, bg, isVisible) {
+    let textBlock = new TextBlock(name);
+    textBlock.text = text;
+    textBlock.color = color;
+    textBlock.fontSize = fontSize;
+    textBlock.fontFamily = fontFamily;
+    textBlock.top = top;
+    textBlock.left = left;
+    textBlock.width = width;
+    textBlock.height = height;
+    textBlock.outlineColor = outlineColor;
+    textBlock.outlineWidth = outlineWidth;
+    textBlock.background = bg;
+    textBlock.isVisible = isVisible;
+    textBlock.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    textBlock.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    textBlock.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    textBlock.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    return textBlock;
   }
 }
 

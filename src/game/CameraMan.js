@@ -1,6 +1,7 @@
-import { ArcFollowCamera, Camera, Color4, FollowCamera, FreeCamera, Quaternion, Scene, TransformNode, UniversalCamera, Vector3, Viewport } from "@babylonjs/core";
+import { ArcFollowCamera, ArcRotateCamera, Camera, Color4, FollowCamera, FreeCamera, Quaternion, Scene, TargetCamera, TransformNode, UniversalCamera, Vector3, Viewport } from "@babylonjs/core";
 import { AllLayers, gcursor, getPlayer, ginput, gplayer, gscene, PrimaryLayer, SecondaryLayer, TertiaryLayer } from "./Global";
-import { Bus, EVT_DEBUG, EVT_DEBUGVEC, EVT_KEYUP, EVT_PLAYERCREATED, EVT_SETCAMERATARGET } from "./Bus";
+import { Bus, EVT_DEBUG, EVT_DEBUGVEC, EVT_KEYDOWN, EVT_KEYUP, EVT_PLAYERCREATED, EVT_SETCAMERATARGET } from "./Bus";
+import CBulletManager from "./BulletMan";
 
 let cameraMode = "free";
 let camera = null;
@@ -14,13 +15,15 @@ let mmobservable = null;
 let onBeforeCameraRenderObservable = null;
 let EnableMinimap = false;
 let distance = 15;
+let targetRotation = 180;
+let targetHeight = 5;
 
 export function setupFreeCamera() {
     removeCamera();
-    camera = new FreeCamera("camera1", new Vector3(0, 5, -10), gscene);
+    camera = new FreeCamera("camera1", oldCameraPos, gscene);
 
     // This targets the camera to scene origin
-    camera.setTarget(Vector3.Zero());
+    camera.setTarget(gplayer?._craft?.getPosition() || Vector3.Zero());
     camera.layerMask = PrimaryLayer;
 
     const canvas = gscene.getEngine().getRenderingCanvas();
@@ -30,10 +33,29 @@ export function setupFreeCamera() {
 
     Bus.subscribe(EVT_KEYUP, e => {
         if (e.code === "NumpadMultiply") {
-            camera.position = getPlayer()._craft._mesh.getAbsolutePosition().clone();
+            camera.position = getPlayer()._craft.getPosition().clone();
         }
         if (e.code === "Numpad5") {
             camera.position = gcursor._cursor.position.clone().add(new Vector3(0, 25, 0));
+        }
+        if (e.code === "Digit1") {
+            camera.getAbsolutePosition =  ()=> {
+                return camera.position;
+            }
+            camera.forward = camera.getForwardRay().direction;
+            camera.up = new Vector3(0, 1, 0);
+            CBulletManager.fireBullet(camera);
+        }
+        if (e.code === "ShiftLeft") {
+            distance = 15;
+            targetHeight = 5;
+        }
+    })
+
+    Bus.subscribe(EVT_KEYDOWN, e => {
+        if (e.code === "ShiftLeft") {
+            distance = -5;
+            targetHeight = 2;
         }
     })
 
@@ -45,14 +67,14 @@ export function setupFreeCamera() {
 
 export function setupFollowCamera() {
     removeCamera();
-    camera = new FollowCamera("camera1", new Vector3(0, 5, -3), gscene, getPlayer()._craft._mesh);
+    camera = new FollowCamera("camera1", oldCameraPos, gscene, getPlayer()._craft._mesh);
     camera.radius = distance;
     camera.heightOffset = 5;
-    camera.lowerRadiusLimit = 2;
+    camera.lowerRadiusLimit = -2;
     camera.upperRadiusLimit = distance;
     camera.ellipsoid = new Vector3(1, 1, 1);
     camera.upperHeightOffsetLimit = 10;
-    camera.lowerHeightOffsetLimit = 2;
+    camera.lowerHeightOffsetLimit = 0;
     // camera.rotationOffset = 0;
     // camera.cameraAcceleration = 0.11;
     // camera.maxCameraSpeed = 5;
@@ -76,7 +98,7 @@ export function setupFollowCamera() {
         }
         oldCameraPos = camera.position.clone();
         if (!ginput?.mouse?.left && !ginput?.mouse?.right) {
-            let lerp = Vector3.Lerp(new Vector3(camera.rotationOffset, camera.heightOffset, camera.radius), new Vector3(0, 1, distance), 0.1);
+            let lerp = Vector3.Lerp(new Vector3(camera.rotationOffset, camera.heightOffset, camera.radius), new Vector3(targetRotation, targetHeight, distance), 0.1);
             camera.rotationOffset = lerp.x;
             camera.heightOffset = lerp.y;
             camera.radius = lerp.z;
@@ -88,7 +110,7 @@ export function setupFollowCamera() {
 
 export function setupChaseCam() {
     removeCamera();
-    camera = new FollowCamera("camera1", new Vector3(0, 3, -2), gscene, getPlayer()._craft._mesh);
+    camera = new TargetCamera("camera1", Vector3.Zero(), gscene);
 
     camera.lowerRadiusLimit = 3;
     camera.upperRadiusLimit = 10;
@@ -96,29 +118,33 @@ export function setupChaseCam() {
     // camera.heightOffset = 5;
     // camera.rotationOffset = 0;
     // camera.cameraAcceleration = 0.11;
-    camera.maxCameraSpeed = 25;
-    camera.panningSensibility = 2.50;
-    camera.inputs.attached.pointers.angularSensibilityX = 20;
-    camera.inputs.attached.pointers.angularSensibilityY = 30;
+    camera.maxCameraSpeed = 5;
+    camera.panningSensibility = 0.50;
+    //camera.inputs.attached.pointers.angularSensibilityX = 0.02;
+    //camera.inputs.attached.pointers.angularSensibilityY = 0.03;
     camera.checkCollisions = true;
     camera.ellipsoid = new Vector3(1, 1, 1);
     camera.layerMask = PrimaryLayer;
+
+    //camera.parent = getPlayer()._craft.getCameraAttachmentObject();
+    camera.position = getPlayer()._craft.getPosition();
 
 
     // This targets the camera to scene origin
     // This attaches the camera to the canvas
     const canvas = gscene.getEngine().getRenderingCanvas();
-    camera.attachControl(canvas, true);
-    camera.lockedTarget = getPlayer()._craft._mesh;
+    camera.attachControl(canvas, true);    
 
     observable = gscene.onBeforeRenderObservable.add(() => {
         if (camera === null) {
             return;
         }
         oldCameraPos = camera.position.clone();
-        camera.radius = 1;
-        camera.heightOffset = 1;
-        camera.rotationOffset = 0;
+        //camera.target = gcursor._cursor.position;
+        
+        //camera.radius = 18;
+        //camera.heightOffset = 10;
+        //camera.rotationOffset = targetRotation;
     });
     setupMiniMap();
 }
@@ -159,18 +185,20 @@ function setupCockpitCam() {
 
 function setCamera() {
     getPlayer()._craft.showCockpit(false);
+    const pos = getPlayer()._craft.getPosition();
     console.log(cameras[cameraCurrent]);
     switch (cameras[cameraCurrent]) {
         case "free":
             setupFreeCamera();
-            camera.position = oldCameraPos.add(new Vector3(-10, 10, -10));
+            camera.position = pos.add(new Vector3(-10, 10, -10));
             break;
         case "follow":
             setupFollowCamera();
-            //camera.position = oldCameraPos;
+            camera.position = pos.add(new Vector3(-10, 10, -10));
             break;
         case "chase":
             setupChaseCam();
+            camera.position = pos.add(new Vector3(-10, 10, -10));
             //camera.position = oldCameraPos;
             break;
         case "cockpit":

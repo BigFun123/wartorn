@@ -1,7 +1,7 @@
 import { Vector3 } from "@babylonjs/core";
 import { setPlayer } from "./Global";
 import CInput from "./Input";
-import { Bus, EVT_CURSOR3D, EVT_DEBUG_NEXTTARGET, EVT_DEBUG_PREVTARGET, EVT_KEYUP, EVT_PLAYERCREATED, EVT_PLAYERUPDATE, EVT_RESET, EVT_SELECTNEXTTARGET, EVT_SELECTPREVTARGET } from "./Bus";
+import { Bus, EVT_CURSOR3D, EVT_DEBUG_NEXTTARGET, EVT_DEBUG_PREVTARGET, EVT_EXPORT, EVT_KEYUP, EVT_PLAYERCREATED, EVT_PLAYERUPDATE, EVT_RESET, EVT_SELECTNEXTTARGET, EVT_SELECTPREVTARGET } from "./Bus";
 
 class Player {
     pitch = 0;
@@ -14,6 +14,7 @@ class Player {
     fire2 = 0;
     fire3 = 0;
     ignition = 1;
+    maxRoll = 2;
 
     _craft = null;
     _status = "0";
@@ -58,6 +59,12 @@ class Player {
                     Bus.send(EVT_DEBUG_PREVTARGET, {});
                 } else {
                     Bus.send(EVT_SELECTPREVTARGET, {});
+                }
+            }
+
+            if (e.code === "KeyE") {
+                if (e.shiftKey) {
+                    Bus.send(EVT_EXPORT, {});
                 }
             }
 
@@ -109,6 +116,7 @@ class Player {
         } else {
             this.roll = +zeroth.y;
         }
+        this.roll = Math.min(this.maxRoll, Math.max(-this.maxRoll, this.roll));
 
         // yaw is qe
         if (this._inputInstance.isKeyDown("q")) {

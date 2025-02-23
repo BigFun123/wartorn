@@ -4,7 +4,9 @@ import { Bus, EVT_CURSOR3D, EVT_DEBUG, EVT_DEBUGVEC, EVT_KEYUP, EVT_MOUSEUP } fr
 
 export default class CCursor {
 
-    _enabled = false;
+    _enabled = true;
+    _previousX = 0;
+    _previousY = 0;
 
     constructor() {
         this._cursor = null;
@@ -62,22 +64,28 @@ export default class CCursor {
             }
         })
 
+        //gscene.onPointerMove = (evt, pickInfo) => {
         gscene.onBeforeRenderObservable.add(() => {
             if (this._enabled) {
                 if (gscene.activeCamera) {
                     let ray = gscene.createPickingRay(gscene.pointerX, gscene.pointerY, Matrix.Identity(), gscene.activeCamera, false);                    
-                    let hit = gscene.pickWithRay(ray);
+                    let hit = gscene.pickWithRay(ray, (mesh)=> {
+                        //todo filter out hi def terrain meshes
+                        if (mesh.name.startsWith("Tile_") || mesh.name.startsWith("line")) {
+                            return false;
+                        }
+                        return true;
+                    });
                     if (hit.hit) {
                         //this._cursor.position = hit.hitPointWorld.add(hit.hitNormalWorld.scale(0.1));
                         this._cursor.position = hit.pickedPoint;
                        // this._cursor.isVisible = true;
                         //Bus.send(EVT_DEBUG, hit.pickedPoint.x.toFixed(2) + "," + hit.pickedPoint.y.toFixed(2) + "," + hit.pickedPoint.z.toFixed(2));
                     }
-                    Bus.send(EVT_CURSOR3D, hit)
+                    Bus.send(EVT_CURSOR3D, hit);
                 }
             }
         });
-
 
     }
 }

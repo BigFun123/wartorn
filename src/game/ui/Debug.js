@@ -2,7 +2,8 @@ import { Control, Rectangle, TextBlock } from "@babylonjs/gui";
 import CGUI from "./GUI";
 import { Bus, EVT_CURSOR3D, EVT_DEBUG, EVT_DEBUGLINE, EVT_DEBUGVEC } from "../Bus";
 import { Color3, Color4, MeshBuilder, Vector3 } from "@babylonjs/core";
-import { gscene } from "../Global";
+import { gscene, tilesize } from "../Global";
+import { xyToTile } from "../Utils";
 
 export default class Debug {
 
@@ -13,7 +14,7 @@ export default class Debug {
     constructor() {
         this.setup()
         this._linesOptions = {
-            points: [new Vector3(0,0,0), new Vector3(0,0,0)],
+            points: [new Vector3(0,0,0), new Vector3(0,0,0), new Vector3(0,0,0)],
             updatable: true,
             useVertexAlpha: true
         }
@@ -31,14 +32,19 @@ export default class Debug {
 
         Bus.subscribe(EVT_DEBUGLINE, (data) => {
             this._linesOptions.points[0] = data.from;
-            this._linesOptions.points[1] = data.to;
+            this._linesOptions.points[1] = data.to.add(new Vector3(0, 0.1, 0));
+            this._linesOptions.points[2] = new Vector3(data.to.x, data.to.y + 1.1, data.to.z);
             this._linesOptions.instance = this._linesMesh;
             this._linesMesh = MeshBuilder.CreateLines("lines", this._linesOptions);
         })
 
         Bus.subscribe(EVT_CURSOR3D, (data) => {
             if (data.hit) {
-                this._xyzText.text = Math.round(data.pickedPoint.x * 100) / 100 + "," + Math.round(data.pickedPoint.y * 100) / 100 + "," + Math.round(data.pickedPoint.z * 100) / 100;
+                const tile = xyToTile(data.pickedPoint.x, data.pickedPoint.z, tilesize);
+                this._xyzText.text = Math.round(data.pickedPoint.x * 100) / 100 + 
+                "," + Math.round(data.pickedPoint.y * 100) / 100 + 
+                "," + Math.round(data.pickedPoint.z * 100) / 100 +
+                "," + tile[0] + "," + tile[1];
             }
             
         });
@@ -83,14 +89,14 @@ export default class Debug {
         let xyzText = new TextBlock("xyzlabel");
         xyzText.text = "";
         xyzText.color = "white";
-        xyzText.fontSize = 14;
+        xyzText.fontSize = 18;
         xyzText.fontFamily = "Arial";
         //xyzText.bottom = "30px";
         xyzText.left = "5px";
         xyzText.width = "800px";
         xyzText.height = "120px";
         xyzText.outlineColor = "black";
-        xyzText.outlineWidth = 2;
+        xyzText.outlineWidth = 4;
         CGUI.adt.addControl(xyzText);
         xyzText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         xyzText.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;

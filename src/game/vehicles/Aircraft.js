@@ -1,16 +1,15 @@
 import { Color3, Color4, Material, PhysicsAggregate, PhysicsBody, PhysicsShapeType, Quaternion, SceneLoader, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
-import GameObject from "./GameObject";
-import AssetMan from "./AssetMan";
-import { gscene, PrimaryLayer, SecondaryLayer } from "./Global";
-import { Bus, EVT_ADDSHADOW, EVT_DEBUG, EVT_DEBUGLINE, EVT_PLAY3DAUDIO } from "./Bus";
-import CControlSurfaces from "./CControlSurfaces";
+import GameObject from "../GameObject";
+import AssetMan from "../AssetMan";
+import { gscene, PrimaryLayer, SecondaryLayer } from "../Global";
+import { Bus, EVT_ADDSHADOW, EVT_DEBUG, EVT_DEBUGLINE, EVT_PLAY3DAUDIO } from "../Bus";
+import CControlSurfaces from "../CControlSurfaces";
 import IVehicle from "./IVehicle";
-import CBulletManager from "./BulletMan";
+import CBulletManager from "../BulletMan";
 
 class Aircraft extends IVehicle {
 
     _throttle = 0;
-    _power = 1;
     _pitch = 0;
     _pitchrate = 1;
     _roll = 0;
@@ -27,6 +26,7 @@ class Aircraft extends IVehicle {
 
     setup() {
         const oldmesh = this._mesh;
+        this._isMoveable = true;
 
         const task = AssetMan.getInstance()._assetman.addMeshTask(this._go.name, "", "assets/", this._go.file);
         task.onSuccess = (task) => {

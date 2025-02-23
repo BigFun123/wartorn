@@ -4,7 +4,7 @@ import { log, error } from './debug/Log.js';
 import CRender from './Render.js';
 import CPhysics from './Physics.js';
 import { gplayer, gscene, setInput } from './Global.js';
-import { Bus, EVT_KEYDOWN, EVT_KEYUP, EVT_LOADMISSION, EVT_MISSIONLOADED, EVT_PAUSE, EVT_RESET, EVT_RESUME, EVT_SELECTMISSION, EVT_SETSTATE } from './Bus.js';
+import { Bus, EVT_KEYDOWN, EVT_KEYUP, EVT_LOADMISSION, EVT_MISSIONLOADED, EVT_PAUSE, EVT_PLAYERCREATED, EVT_PLAYERLOADED, EVT_RESET, EVT_RESUME, EVT_SELECTMISSION, EVT_SETSTATE } from './Bus.js';
 import assetMan from './AssetMan.js';
 import SkyBox from './SkyBox.js';
 import { setupFollowCamera, setupFreeCamera } from './CameraMan.js';
@@ -22,6 +22,7 @@ import MissionSelector from './ui/MissionSelector.js';
 import { CPerformance } from './ui/CPerformance.js';
 import VehicleSelector from './ui/VehicleSelector.js';
 import LoadingScreen from './ui/LoadingScreen.js';
+import { CGameProgress } from './ui/CGameProgress.js';
 
 /**
  * All components have the same lifecycle
@@ -57,6 +58,7 @@ class Game {
         this._status = new CraftStatus();
         this._debug = new Debug();
         this.setup();
+        this.setupUI();
 
         initProgress();
         this._ready = true;
@@ -108,9 +110,16 @@ class Game {
         });
 
         Bus.subscribe(EVT_MISSIONLOADED, async (mission) => {
-            this._cursor.setup();
+            this._cursor.setup();            
+        });
+
+        Bus.subscribe(EVT_PLAYERLOADED, () => {
             setupFollowCamera();
         });
+    }
+
+    setupUI() {
+        this._gameProgress = new CGameProgress();
     }
 
     async setup() {

@@ -1,7 +1,7 @@
 import { MeshBuilder, PhysicsAggregate, PhysicsMotionType, PhysicsShapeType, Vector3 } from "@babylonjs/core";
 import { gscene, PrimaryLayer, TertiaryLayer } from "./Global";
 import Render from "./Render";
-import { Bus, EVT_ADDSHADOW, EVT_ERROR, EVT_REMOVESHADOW } from "./Bus";
+import { Bus, EVT_ADDSHADOW, EVT_DESTROYED, EVT_ERROR, EVT_REMOVESHADOW } from "./Bus";
 import AssetMan from "./AssetMan";
 
 class GameObject {
@@ -14,16 +14,22 @@ class GameObject {
     _isNPC = false;
     _fileContents = null;
     _isSetup = false;
+    _health = 100;
+    _disposed = false;
+    _isMoveable = false;
+    _team = "A";
 
     constructor(go) {
         this._go = go;
+       
         this.presetup();
     }
 
     presetup() {
+        this._initialPosition = new Vector3(this._go.position[0], this._go.position[1], this._go.position[2]);
         this._mesh = MeshBuilder.CreateBox(this._go.name || "box", { size: 1 }, gscene);
         this._mesh.position.set(this._go.position);
-        this._mesh.rotationQuaternion = this._go.rotation ? new Vector3(-this._go.rotation[0], this._go.rotation[1], this._go.rotation[2], this._go.rotation[3]) : Vector3.Zero();
+        this._mesh.rotationQuaternion = this._go.rotation ? new Vector3(this._go.rotation[0], this._go.rotation[1], this._go.rotation[2], this._go.rotation[3]) : Vector3.Zero();
         this._mesh.layerMask = PrimaryLayer;
         // Move the box upward 1/2 its height
         //this._mesh.position.y = 2.5;
@@ -86,12 +92,18 @@ class GameObject {
             if (oldmesh !== undefined) {
                 oldmesh.dispose();
             }
+            this.onLoaded();
 
         };
         task.onError = function (task) {
             console.error("Error loading mesh", task?._errorObject?.exception);
         };
 
+    }
+
+    // override
+    onLoaded() {
+        console.log("GameObject onLoaded");
     }
 
     afterLoadedTasks(meshes) {
@@ -132,22 +144,26 @@ class GameObject {
 
     reset() {
         if (this._go !== undefined) {
-            if (this._mesh.parent) {
+            this.setPosition(this._initialPosition);
+
+        }
+    }
+
+    setPosition(vector) {
+        if (this._aggregate !== undefined) {
+            this._aggregate.body.disablePreStep = false;
+            this._aggregate.transformNode.position.set(this._go.position[0], this._go.position[1], this._go.position[2]);
+            if (this._go.rotation) {
+                this._aggregate.transformNode.rotationQuaternion.set(this._go.rotation[0], this._go.rotation[1], this._go.rotation[2], this._go.rotation[3]);
+            }
+            //this._aggregate.body.position = this._mesh.position.clone();
+            this._aggregate.body.setLinearVelocity(Vector3.Zero());
+            this._aggregate.body.setAngularVelocity(Vector3.Zero());
+        } else {
+            if (this._mesh.parent && this._mesh.parent.name !== "__root__") {
                 this._mesh.parent?.position?.set(this._go.position[0], this._go.position[1], this._go.position[2]);
             } else {
                 this._mesh.position.set(this._go.position);
-            }
-
-            if (this._aggregate !== undefined) {
-                this._aggregate.body.disablePreStep = false;
-                this._aggregate.transformNode.position.set(this._go.position[0], this._go.position[1], this._go.position[2]);
-                if (this._go.rotation) {
-                    this._aggregate.transformNode.rotationQuaternion.set(this._go.rotation[0], this._go.rotation[1], this._go.rotation[2], this._go.rotation[3]);
-                }
-
-                //this._aggregate.body.position = this._mesh.position.clone();
-                this._aggregate.body.setLinearVelocity(Vector3.Zero());
-                this._aggregate.body.setAngularVelocity(Vector3.Zero());
             }
         }
     }
@@ -159,18 +175,31 @@ class GameObject {
     }
 
     pulse() {
-        if (this._aggregate !== undefined) {
-            this._velocity = this._aggregate.body.getLinearVelocity();
+        // if (this._isMoveable && !this._disposed && this._aggregate !== undefined) {
+        //     this._velocity = this._mesh._physicsBody.getLinearVelocity();
+        //     this._speed = this._velocity.length();
+        //     this._altitude = this._mesh.position.y;
+        //     this._heading = this._mesh.rotationQuaternion.toEulerAngles().y * 180 / Math.PI;
+        //     this._heading = this._heading < 0 ? Math.abs(this._heading) : 360 - this._heading;
+        //     //this._aggregate.body.applyForce(this._mesh.up, this._mesh.getAbsolutePosition());
+        // }
+    }
+
+    calculateSpeed() {
+        if (this._isMoveable && !this._disposed && this._mesh.physicsBody !== undefined) {
+            this._velocity = this._mesh._physicsBody.getLinearVelocity();
             this._speed = this._velocity.length();
-            this._altitude = this._aggregate.transformNode.position.y;
-            this._heading = this._aggregate.transformNode.rotationQuaternion.toEulerAngles().y * 180 / Math.PI;
-            this._heading = this._heading < 0 ? Math.abs(this._heading) : 360 - this._heading;
-            //this._aggregate.body.applyForce(this._mesh.up, this._mesh.getAbsolutePosition());
+            this._altitude = this._mesh.position.y;
+            this._heading = this._mesh.rotationQuaternion.toEulerAngles().y * 180 / Math.PI;
+            this._heading = this._heading < 0 ? Math.abs(this._heading) : 360 - this._heading;        
         }
     }
 
     dispose() {
         Bus.send(EVT_REMOVESHADOW, this._mesh);
+        Bus.send(EVT_DESTROYED, this);
+        this._aggregate?.dispose();
+        this._mesh.dispose();
     }
 
     playFullAnim(name, speed, doneCallback) {
@@ -220,6 +249,24 @@ class GameObject {
                 mesh.layerMask = TertiaryLayer;
             }
         });
+    }
+
+    onCollision(collider) {
+        console.log("Collision with ", collider.collidedAgainst?.name);
+        if (collider.collidedAgainst?.transformNode?.name === "bullet") {
+            this._health -= 10;
+            if (this._health <= 0) {
+                this.dispose();
+            }
+        }
+    }
+
+    getAttribute(name) {
+        if (this._go[name] === undefined) {
+            console.error("Attribute " + name + " not found in GameObject");
+            return 0;
+        }
+        return this._go[name];
     }
 
 }

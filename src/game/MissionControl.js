@@ -1,17 +1,16 @@
-import Aircraft from "./Aircraft";
+import Aircraft from "./vehicles/Aircraft";
 import AssetMan from "./AssetMan";
-import { Bus, EVT_DEBUG_NEXTTARGET, EVT_ERROR, EVT_LOADMISSION, EVT_LOADVEHICLE, EVT_MISSIONSELECTED, EVT_NEXTTARGET_SELECTED, EVT_PAUSE, EVT_RESUME, EVT_SELECTDMISSION, EVT_SELECTMISSION, EVT_SELECTNEXTTARGET, EVT_SETCAMERATARGET, EVT_SETSTATE, EVT_VEHICLELOADED, EVT_VEHICLEPREPARED, EVT_VEHICLESELECTED, EVT_WORLDLOADED } from "./Bus";
+import { Bus, EVT_DEBUG_NEXTTARGET, EVT_DESTROYED, EVT_ERROR, EVT_EXPORT, EVT_LOADMISSION, EVT_LOADVEHICLE, EVT_MISSIONSELECTED, EVT_NEXTTARGET_SELECTED, EVT_PAUSE, EVT_PLAYERLOADED, EVT_RESUME, EVT_SELECTDMISSION, EVT_SELECTMISSION, EVT_SELECTNEXTTARGET, EVT_SETCAMERATARGET, EVT_SETSTATE, EVT_VEHICLELOADED, EVT_VEHICLEPREPARED, EVT_VEHICLESELECTED, EVT_WORLDLOADED } from "./Bus";
 import { CTerrain } from "./CTerrain";
 import Cube from "./Cube";
-import GameObject from "./GameObject";
 import Ground from "./Ground";
 import NPC from "./NPC";
 import Player from "./Player";
-import stateInstance from "./State";
 import StaticMesh from "./StaticMesh";
-import Tank from "./Tank";
+import Tank from "./vehicles/Tank";
 import CDrone from "./vehicles/CDrone";
 import Water from "./Water";
+import { GameScoreA, GameScoreB, setGameScoreA, setGameScoreB } from "./Global";
 
 class MissionControl {
 
@@ -60,11 +59,12 @@ class MissionControl {
         });
 
         Bus.subscribe(EVT_LOADMISSION, async () => {
-            await this.setupMission(this._mission);
+            await this.setupMission(this._mission);            
+            this.setupVehicle(this._playerVehicle);
         });
 
         Bus.subscribe(EVT_VEHICLESELECTED, async (vehicle) => {
-            this._playerVehicle = vehicle;            
+            this._playerVehicle = vehicle;
             Bus.send(EVT_VEHICLEPREPARED, {});
             //await this.setupVehicle(vehicle);
             //Bus.send(EVT_VEHICLELOADED, vehicle);
@@ -79,7 +79,23 @@ class MissionControl {
             if (obj._mesh) {
                 Bus.send(EVT_SETCAMERATARGET, this._objects[this._debugtargetIndex]._mesh);
             }
-            
+        });
+
+        Bus.subscribe(EVT_DESTROYED, (obj) => {
+            if (obj.isNPC) {
+                this._enemies = this._enemies.filter((e) => e !== obj);
+            } else {
+                this._objects = this._objects.filter((o) => o !== obj);
+            }
+            if (obj._team === "A") {
+                setGameScoreA(+GameScoreA + 1);
+            } else {
+                setGameScoreB(+GameScoreB + 1);
+            }
+        });
+
+        Bus.subscribe(EVT_EXPORT, () => {
+            this.export();
         });
 
 
@@ -123,7 +139,10 @@ class MissionControl {
     reset() {
         //tell all objects to reset to their initial position
         for (let i = 0; i < this._objects.length; i++) {
-            this._objects[i].reset();
+            if (this._objects[i].reset) {
+                this._objects[i].reset();
+            }
+
         }
     }
 
@@ -168,9 +187,16 @@ class MissionControl {
             ac = new Tank(go);
         }
 
+        this._objects.push(ac);
+        ac.setup(AssetMan.getPlayerMan());
+        AssetMan.startPlayer();
+        ac.onLoaded = () => {
+            Bus.send(EVT_PLAYERLOADED, ac);
+        }
+
         this._player = new Player("player1", ac);
 
-        this._objects.push(ac);
+
     }
 
     /**
@@ -178,7 +204,7 @@ class MissionControl {
      * @returns 
      */
     findSpawn(go) {
-        for (let i=0; i< this._spawns.length; i++) {
+        for (let i = 0; i < this._spawns.length; i++) {
             const spawn = this._spawns[i];
             if (spawn.craft == go.type) {
                 return spawn;
@@ -200,8 +226,6 @@ class MissionControl {
                 this._spawns.push(go);
             }
         }
-
-        this.setupVehicle(this._playerVehicle);
 
         for (let i = 0; i < this._mission.length; i++) {
             const go = this._mission[i];
@@ -269,10 +293,6 @@ class MissionControl {
             // }
         }
 
-        if (!this._player) {
-            console.error("no player mesh found");
-        }
-
         // now setup all the objects properly, starting any streaming tasks
         for (let i = 0; i < this._objects.length; i++) {
             if (this._objects[i].setup) {
@@ -300,6 +320,22 @@ class MissionControl {
 
     endMission() {
         this._running = false;
+    }
+
+    export() {
+        const data = [];
+
+        // download json
+        const json = JSON.stringify(this._mission, null, 2);
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "mission.json";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
     }
 }
 

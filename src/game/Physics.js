@@ -14,7 +14,7 @@ class CPhysics {
     async setup() {
         this._havok = await HavokPhysics();
         this._hk = new HavokPlugin(true, this._havok);
-        gscene.enablePhysics(new Vector3(0,-24, 0), this._hk);
+        gscene.enablePhysics(new Vector3(0,-90.8, 0), this._hk);
         gscene.getPhysicsEngine().setTimeStep(1 / 500);
         gscene.getPhysicsEngine().setSubTimeStep(4.5);
         console.log("Physics Timestep: ", this._hk.getTimeStep());
